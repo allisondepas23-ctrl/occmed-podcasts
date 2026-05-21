@@ -269,15 +269,32 @@ header {
 <audio id="audioEl"></audio>
 
 <script>
+// ── GLOBALS ──────────────────────────────────────────────
 const audio = document.getElementById('audioEl');
 let episodes = [], filtered = [], currentEp = null;
 let activeCategory = 'all';
 const speeds = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 let speedIdx = 1;
 let episode_map = {};
-let gapiReady = false, gsiReady = false;
+let gapiReady = false;
 let accessToken = null;
 let currentBlobUrl = null;
+
+// ── HANDLE OAUTH REDIRECT RETURN (runs before anything else) ──
+(function() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    const token = params.get('access_token');
+    const fid = params.get('state');
+    if (token) {
+      accessToken = token;
+      if (fid) localStorage.setItem('gFid', fid);
+      // Clean the token out of the URL bar
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+})();
 
 // ── PERSISTENCE ──────────────────────────────────────────
 function getProgress(id) { return parseFloat(localStorage.getItem('p_'+id)||'0'); }
@@ -297,62 +314,46 @@ function saveAndConnect() {
   if (!cid || !fid) { alert('Please enter both your Client ID and Folder ID.'); return; }
   localStorage.setItem('gCid', cid);
   localStorage.setItem('gFid', fid);
-  bootGapi(cid, fid);
+  doAuth(cid, fid);
 }
 
-function bootGapi(cid, fid) {
-  let gsiLoaded = false, gapiLoaded = false;
-
-  function tryAuth() {
-    if (gsiLoaded && gapiLoaded) doAuth(cid, fid);
-  }
-
-  if (!window.google) {
-    const s1 = document.createElement('script');
-    s1.src = 'https://accounts.google.com/gsi/client';
-    s1.onload = () => { gsiLoaded = true; tryAuth(); };
-    document.head.appendChild(s1);
-  } else { gsiLoaded = true; }
-
-  if (!window.gapi) {
-    const s2 = document.createElement('script');
-    s2.src = 'https://apis.google.com/js/api.js';
-    s2.onload = () => {
-      gapi.load('client', async () => {
-        await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
-        gapiReady = true;
-        gapiLoaded = true;
-        tryAuth();
-      });
-    };
-    document.head.appendChild(s2);
-  } else if (gapiReady) { gapiLoaded = true; }
-
-  tryAuth();
-}
-
+// ── REDIRECT-BASED AUTH (works on iPhone home screen) ────
 function doAuth(cid, fid) {
-  if (!window.google || !gapiReady) { setTimeout(()=>doAuth(cid,fid), 300); return; }
-  const tc = google.accounts.oauth2.initTokenClient({
+  const params = new URLSearchParams({
     client_id: cid,
+    redirect_uri: 'https://allisondepas23-ctrl.github.io',
+    response_type: 'token',
     scope: 'https://www.googleapis.com/auth/drive.readonly',
-    callback: (resp) => {
-      if (resp.error) { alert('Sign-in error: '+resp.error); return; }
-      accessToken = resp.access_token;
-      showMain();
-      fetchFiles(fid);
-    }
+    include_granted_scopes: 'true',
+    state: fid
   });
-  tc.requestAccessToken({ prompt: 'select_account' });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
 
 function signOut() {
-  if (accessToken) google.accounts.oauth2.revoke(accessToken);
   accessToken = null;
   episodes = []; filtered = [];
   if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
   audio.src = '';
+  localStorage.removeItem('gCid');
+  localStorage.removeItem('gFid');
   showConnect();
+}
+
+// ── LOAD GAPI CLIENT ─────────────────────────────────────
+function loadGapiAndFetch(fid) {
+  if (window.gapi && gapiReady) { fetchFiles(fid); return; }
+  const s = document.createElement('script');
+  s.src = 'https://apis.google.com/js/api.js';
+  s.onload = () => {
+    gapi.load('client', async () => {
+      await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+      gapi.client.setToken({ access_token: accessToken });
+      gapiReady = true;
+      fetchFiles(fid);
+    });
+  };
+  document.head.appendChild(s);
 }
 
 // ── DRIVE ────────────────────────────────────────────────
@@ -398,7 +399,7 @@ async function fetchFiles(rootId) {
   }
 }
 
-// ── AUDIO FETCH (key fix: use token in header) ────────────
+// ── AUDIO FETCH ───────────────────────────────────────────
 async function fetchAudioAsBlob(fileId, mimeType) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
   const resp = await fetch(url, {
@@ -406,7 +407,6 @@ async function fetchAudioAsBlob(fileId, mimeType) {
   });
   if (!resp.ok) throw new Error('Failed to fetch audio: ' + resp.status);
   const blob = await resp.blob();
-  // Force correct MIME for WAV so browser decodes it
   const typedBlob = new Blob([blob], { type: mimeType.includes('wav') || mimeType === 'application/octet-stream' ? 'audio/wav' : mimeType });
   return URL.createObjectURL(typedBlob);
 }
@@ -506,7 +506,6 @@ async function loadEpisode(ep, autoplay) {
   document.getElementById('player').classList.add('visible');
   document.getElementById('loadingEp').style.display = 'block';
 
-  // revoke old blob
   if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
   audio.src = '';
 
@@ -594,7 +593,18 @@ setInterval(saveSession, 8000);
   const fid = localStorage.getItem('gFid');
   if (cid) document.getElementById('clientIdInput').value = cid;
   if (fid) document.getElementById('folderIdInput').value = fid;
-  if (cid && fid) { showMain(); showLoading(); bootGapi(cid, fid); }
+
+  if (accessToken && fid) {
+    // Returned from OAuth redirect with a valid token
+    showMain();
+    showLoading();
+    loadGapiAndFetch(fid);
+  } else if (cid && fid) {
+    // Had credentials saved, need to re-auth
+    showMain();
+    showLoading();
+    doAuth(cid, fid);
+  }
 })();
 </script>
 </body>
