@@ -62,7 +62,6 @@ header {
 }
 .tab.active { background: var(--accent); border-color: var(--accent); color: #0d0f14; font-weight: 600; }
 
-/* connect screen */
 #connectScreen { padding: 40px 20px; }
 .connect-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
@@ -92,29 +91,7 @@ header {
   font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; margin-top: 4px;
 }
 .btn-primary:hover { opacity: 0.85; }
-.btn-secondary {
-  width: 100%; background: transparent; color: var(--text-muted); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px; font-family: 'DM Sans', sans-serif;
-  font-size: 13px; cursor: pointer; margin-top: 8px; transition: border-color 0.2s;
-}
-.btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
-.setup-steps { text-align: left; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
-.setup-steps h4 {
-  font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
-}
-.step { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
-.step-num {
-  width: 20px; height: 20px; border-radius: 50%; background: rgba(123,156,255,0.15);
-  border: 1px solid rgba(123,156,255,0.3); color: var(--accent2); font-size: 10px;
-  font-weight: 600; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
-}
-.step p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 0; }
-.step a { color: var(--accent2); text-decoration: none; }
-code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 1px 5px; border-radius: 4px; font-size: 11px; color: var(--accent); }
 
-/* main */
 #mainContent { display: none; }
 .section-header { padding: 0 20px 10px; display: flex; align-items: center; justify-content: space-between; }
 .section-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
@@ -150,7 +127,6 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
 }
 .episode-card:hover .ep-play-btn, .episode-card.playing .ep-play-btn { background: var(--accent); border-color: var(--accent); }
 
-/* player */
 #player {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: rgba(22,26,34,0.97); backdrop-filter: blur(20px);
@@ -183,7 +159,6 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
 }
 .play-pause-btn:hover { opacity: 0.85; }
 
-/* auth bar */
 .auth-bar {
   margin: 0 12px 12px; display: flex; align-items: center; justify-content: space-between;
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
@@ -199,6 +174,13 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
 .empty { padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .episode-list-wrap { padding-bottom: 180px; }
 .scroll-area { overflow-y: auto; max-height: calc(100vh - 160px); }
+
+.loading-ep {
+  position: fixed; bottom: 160px; left: 50%; transform: translateX(-50%);
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+  padding: 8px 16px; font-size: 12px; color: var(--text-muted);
+  font-family: 'DM Mono', monospace; z-index: 300; display: none;
+}
 </style>
 </head>
 <body>
@@ -218,12 +200,11 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
   <button class="tab active" onclick="filterByCategory('all',this)">All</button>
 </div>
 
-<!-- CONNECT -->
 <div id="connectScreen">
   <div class="connect-card">
     <div class="connect-icon">🎙️</div>
     <h2>Connect Google Drive</h2>
-    <p>Paste your Google OAuth Client ID and the ID of your top-level podcast folder. Your files stay private.</p>
+    <p>Paste your Google OAuth Client ID and the ID of your top-level podcast folder.</p>
     <div class="input-group">
       <label>Google Client ID</label>
       <input type="text" id="clientIdInput" placeholder="xxxx.apps.googleusercontent.com">
@@ -233,35 +214,9 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
       <input type="text" id="folderIdInput" placeholder="Paste the folder ID from the Drive URL">
     </div>
     <button class="btn-primary" onclick="saveAndConnect()">Connect &amp; Sign In</button>
-    <button class="btn-secondary" onclick="loadDemoMode()">Try Demo Mode First</button>
-
-    <div class="setup-steps">
-      <h4>One-Time Setup (≈ 20 min)</h4>
-      <div class="step">
-        <div class="step-num">1</div>
-        <p>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → Create a new project → Enable <strong>Google Drive API</strong></p>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <p>Go to <strong>APIs &amp; Services → Credentials → Create OAuth 2.0 Client ID</strong> → Application type: <em>Web application</em></p>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <p>Under <strong>Authorized JavaScript origins</strong>, add the URL where you host this file (e.g. your GitHub Pages URL)</p>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <p>Copy the Client ID and paste it above</p>
-      </div>
-      <div class="step">
-        <div class="step-num">5</div>
-        <p>Open your podcast folder in Drive → copy the ID from the URL (the part after <code>/folders/</code>)</p>
-      </div>
-    </div>
   </div>
 </div>
 
-<!-- MAIN -->
 <div id="mainContent">
   <div class="auth-bar" id="authBar" style="display:none">
     <span><span class="pulse"></span>Connected to Google Drive</span>
@@ -278,7 +233,6 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
   </div>
 </div>
 
-<!-- PLAYER -->
 <div id="player">
   <div class="player-now">
     <div class="player-icon" id="playerIcon">🎙️</div>
@@ -310,6 +264,8 @@ code { font-family: 'DM Mono', monospace; background: var(--surface2); padding: 
   </div>
 </div>
 
+<div class="loading-ep" id="loadingEp">⏳ Fetching audio...</div>
+
 <audio id="audioEl"></audio>
 
 <script>
@@ -319,11 +275,13 @@ let activeCategory = 'all';
 const speeds = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 let speedIdx = 1;
 let episode_map = {};
-let gapiReady = false;
+let gapiReady = false, gsiReady = false;
+let accessToken = null;
+let currentBlobUrl = null;
 
 // ── PERSISTENCE ──────────────────────────────────────────
 function getProgress(id) { return parseFloat(localStorage.getItem('p_'+id)||'0'); }
-function setProgress(id,v) { localStorage.setItem('p_'+id,v); }
+function setProgress(id,v) { localStorage.setItem('p_'+id, v); }
 function saveSession() {
   localStorage.setItem('session', JSON.stringify({
     lastId: currentEp ? currentEp.id : null,
@@ -343,13 +301,18 @@ function saveAndConnect() {
 }
 
 function bootGapi(cid, fid) {
-  // load GSI
+  let gsiLoaded = false, gapiLoaded = false;
+
+  function tryAuth() {
+    if (gsiLoaded && gapiLoaded) doAuth(cid, fid);
+  }
+
   if (!window.google) {
     const s1 = document.createElement('script');
     s1.src = 'https://accounts.google.com/gsi/client';
-    s1.onload = () => checkBothLoaded(cid, fid);
+    s1.onload = () => { gsiLoaded = true; tryAuth(); };
     document.head.appendChild(s1);
-  } else { checkBothLoaded(cid, fid); }
+  } else { gsiLoaded = true; }
 
   if (!window.gapi) {
     const s2 = document.createElement('script');
@@ -358,25 +321,24 @@ function bootGapi(cid, fid) {
       gapi.load('client', async () => {
         await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
         gapiReady = true;
-        checkBothLoaded(cid, fid);
+        gapiLoaded = true;
+        tryAuth();
       });
     };
     document.head.appendChild(s2);
-  }
-}
+  } else if (gapiReady) { gapiLoaded = true; }
 
-let gsiReady = false;
-function checkBothLoaded(cid, fid) {
-  if (window.google && !gsiReady) { gsiReady = true; }
-  if (gsiReady && gapiReady) { doAuth(cid, fid); }
+  tryAuth();
 }
 
 function doAuth(cid, fid) {
+  if (!window.google || !gapiReady) { setTimeout(()=>doAuth(cid,fid), 300); return; }
   const tc = google.accounts.oauth2.initTokenClient({
     client_id: cid,
     scope: 'https://www.googleapis.com/auth/drive.readonly',
     callback: (resp) => {
       if (resp.error) { alert('Sign-in error: '+resp.error); return; }
+      accessToken = resp.access_token;
       showMain();
       fetchFiles(fid);
     }
@@ -385,10 +347,11 @@ function doAuth(cid, fid) {
 }
 
 function signOut() {
-  const t = gapi.client.getToken();
-  if (t) google.accounts.oauth2.revoke(t.access_token);
-  gapi.client.setToken(null);
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
   episodes = []; filtered = [];
+  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+  audio.src = '';
   showConnect();
 }
 
@@ -406,7 +369,7 @@ async function fetchFiles(rootId) {
     let all = [];
     for (const folder of folders) {
       const res = await gapi.client.drive.files.list({
-        q: `'${folder.id}' in parents and mimeType contains 'audio/' and trashed=false`,
+        q: `'${folder.id}' in parents and (mimeType contains 'audio/' or name contains '.wav' or name contains '.mp3' or name contains '.m4a' or name contains '.ogg') and trashed=false`,
         fields: 'files(id,name,mimeType)', pageSize: 200, orderBy: 'name'
       });
       (res.result.files || []).forEach(f => {
@@ -415,7 +378,7 @@ async function fetchFiles(rootId) {
           title: f.name.replace(/\.[^/.]+$/, ''),
           category: folder.name === '_root' ? 'General' : folder.name,
           icon: catIcon(folder.name),
-          url: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`
+          mimeType: f.mimeType || 'audio/wav'
         });
       });
     }
@@ -426,38 +389,26 @@ async function fetchFiles(rootId) {
     renderEpisodes(filtered);
     document.getElementById('authBar').style.display = 'flex';
 
-    // restore session
     try {
       const s = JSON.parse(localStorage.getItem('session')||'{}');
       if (s.speedIdx != null) { speedIdx = s.speedIdx; audio.playbackRate = speeds[speedIdx]; updateSpeedBtn(); }
-      if (s.lastId) {
-        const ep = episodes.find(e => e.id === s.lastId);
-        if (ep && s.lastPos > 0) { loadEpisode(ep, false); audio.addEventListener('loadedmetadata',()=>{ audio.currentTime = s.lastPos; },{once:true}); }
-      }
     } catch(e) {}
   } catch(e) {
-    document.getElementById('episodeList').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    document.getElementById('episodeList').innerHTML = `<div class="empty">Error loading files: ${e.message}</div>`;
   }
 }
 
-// ── DEMO MODE ────────────────────────────────────────────
-function loadDemoMode() {
-  episodes = [
-    {id:'d1',title:'Causation Analysis in Workers Comp',category:'Workers Comp',icon:'⚖️',url:null},
-    {id:'d2',title:'AMA Guides 6th Edition Overview',category:'Workers Comp',icon:'⚖️',url:null},
-    {id:'d3',title:'Return to Work Functional Assessments',category:'Workers Comp',icon:'⚖️',url:null},
-    {id:'d4',title:'Occupational Asthma Diagnosis',category:'Pulmonology',icon:'🫁',url:null},
-    {id:'d5',title:'Silicosis and Dust Exposure',category:'Pulmonology',icon:'🫁',url:null},
-    {id:'d6',title:'Hand-Arm Vibration Syndrome',category:'Musculoskeletal',icon:'🦴',url:null},
-    {id:'d7',title:'Carpal Tunnel in Occupational Settings',category:'Musculoskeletal',icon:'🦴',url:null},
-    {id:'d8',title:'OSHA Recordkeeping Basics',category:'Regulations',icon:'📋',url:null},
-    {id:'d9',title:'Fitness for Duty Evaluations',category:'Regulations',icon:'📋',url:null},
-    {id:'d10',title:'Noise Induced Hearing Loss',category:'Audiology',icon:'👂',url:null},
-  ];
-  filtered = [...episodes];
-  showMain();
-  buildTabs();
-  renderEpisodes(filtered);
+// ── AUDIO FETCH (key fix: use token in header) ────────────
+async function fetchAudioAsBlob(fileId, mimeType) {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const resp = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  });
+  if (!resp.ok) throw new Error('Failed to fetch audio: ' + resp.status);
+  const blob = await resp.blob();
+  // Force correct MIME for WAV so browser decodes it
+  const typedBlob = new Blob([blob], { type: mimeType.includes('wav') || mimeType === 'application/octet-stream' ? 'audio/wav' : mimeType });
+  return URL.createObjectURL(typedBlob);
 }
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -544,24 +495,42 @@ function renderEpisodes(eps) {
 }
 
 // ── PLAYER ───────────────────────────────────────────────
-function loadEpisode(ep, autoplay) {
-  if (!ep.url) { alert('Demo mode — connect your Google Drive to play real files.'); return; }
+async function loadEpisode(ep, autoplay) {
+  if (!accessToken) return;
   if (currentEp) setProgress(currentEp.id, audio.duration>0?audio.currentTime/audio.duration:0);
+
   currentEp = ep;
-  audio.src = ep.url;
-  audio.playbackRate = speeds[speedIdx];
-
-  const saved = getProgress(ep.id);
-  if (saved>0&&saved<0.99) {
-    audio.addEventListener('loadedmetadata',()=>{ audio.currentTime=saved*audio.duration; },{once:true});
-  }
-
   document.getElementById('playerTitle').textContent = ep.title;
   document.getElementById('playerCat').textContent = ep.category;
   document.getElementById('playerIcon').textContent = ep.icon||'🎙️';
   document.getElementById('player').classList.add('visible');
+  document.getElementById('loadingEp').style.display = 'block';
 
-  if (autoplay) audio.play().catch(()=>{});
+  // revoke old blob
+  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+  audio.src = '';
+
+  try {
+    const blobUrl = await fetchAudioAsBlob(ep.id, ep.mimeType || 'audio/wav');
+    currentBlobUrl = blobUrl;
+
+    const saved = getProgress(ep.id);
+    audio.src = blobUrl;
+    audio.playbackRate = speeds[speedIdx];
+
+    if (saved > 0 && saved < 0.99) {
+      audio.addEventListener('loadedmetadata', () => {
+        audio.currentTime = saved * audio.duration;
+      }, { once: true });
+    }
+
+    document.getElementById('loadingEp').style.display = 'none';
+    if (autoplay) audio.play().catch(e => console.warn('Autoplay blocked:', e));
+  } catch(e) {
+    document.getElementById('loadingEp').style.display = 'none';
+    alert('Could not load audio: ' + e.message);
+  }
+
   updatePlayIcon();
   renderEpisodes(filtered);
 }
@@ -573,7 +542,9 @@ function togglePlay() {
 
 function updatePlayIcon() {
   const paused = audio.paused;
-  document.getElementById('playIconPath').setAttribute('points', paused?'8,5 19,12 8,19':'6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4');
+  document.getElementById('playIconPath').setAttribute('points',
+    paused ? '8,5 19,12 8,19' : '6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4'
+  );
 }
 
 function skipBack() { audio.currentTime = Math.max(0, audio.currentTime-15); }
@@ -623,7 +594,7 @@ setInterval(saveSession, 8000);
   const fid = localStorage.getItem('gFid');
   if (cid) document.getElementById('clientIdInput').value = cid;
   if (fid) document.getElementById('folderIdInput').value = fid;
-  if (cid && fid) { showMain(); showLoading(); bootGapi(cid,fid); }
+  if (cid && fid) { showMain(); showLoading(); bootGapi(cid, fid); }
 })();
 </script>
 </body>
