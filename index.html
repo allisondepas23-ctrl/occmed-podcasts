@@ -343,7 +343,7 @@ function doAuth(cid, fid) {
       fetchFiles(fid);
     }
   });
-  tc.requestAccessToken({ prompt: '' });
+  tc.requestAccessToken({ prompt: 'select_account' });
 }
 
 function signOut() {
